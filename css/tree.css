@@ -1,0 +1,51 @@
+* {
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+.treeParent .treeNode{
+    height: 30px;
+    line-height: 30px;
+}
+
+.treeParent .treeNode{
+    display: flex;
+    position: relative;
+    left: 10px;
+}
+
+.treeParent .spreadNode::before,
+.treeParent .shrinkNode::before {
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: block;
+}
+
+.treeParent .spreadNode::before {
+    content: "+";
+}
+
+.treeParent .shrinkNode::before {
+    content: "-";
+}
+
+.treeParent .treeChild {
+    padding-left: 20px;
+    border-left: 1px solid black;
+    overflow: hidden;
+    height: auto;
+    transition: .5s;
+}
+
+.treeParent>.treeChild {
+    border-left: 0px;
+}
+
+.treeChild .treeCheckbox {
+    position: relative;
+    top: 10px;
+    margin-right: 5px;
+}
