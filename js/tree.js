@@ -32,7 +32,8 @@ class Tree {
                 name: tree[i].name,
                 children: [],
                 spread: this.auto,
-                checked: false
+                checked: false,
+                disabled: tree[i].disabled?true:false
             })
             if(tree[i].children) this.setTree(tree[i].children,cur[i].children)
         }
@@ -72,6 +73,7 @@ class Tree {
                     child.prepend(checkbox);
                     checkbox.id = str.replace("tree","checkbox")+"_"+i;
                     checkbox.checked = node[i].checked;
+                    checkbox.disabled = node[i].disabled;
                 }
                 this.setDom(div,node[i].children,str+"_"+i,node[i].spread);
                 dom.appendChild(div);
@@ -111,29 +113,32 @@ class Tree {
     }
 
     //修改底层树的选项
-    updateBottomCheck(id,node,parentChecked) {
+    updateBottomCheck(id,node,parentChecked,disabledStack) {
+        if(node.disabled) {
+            disabledStack.push({
+                node,
+                id
+            });
+        }
         let dom = document.getElementById(id);
         if(node.checked !== parentChecked) {
             dom?dom.checked = parentChecked:"";
             node.checked = parentChecked;
+
             node.children.forEach((item,index)=> {
-                this.updateBottomCheck(id+"_"+index,node.children[index],parentChecked);
+                this.updateBottomCheck(id+"_"+index,node.children[index],parentChecked,disabledStack);
             })
         }
-        
     }
 
     //修改上层树的选项
-    updateTopCheck(dom) {
-        let keys = dom.id.split("_");
-        let parentId = "";
-        for(let i=0;i<keys.length-1;i++) {
-            parentId = parentId + (i===0?"":"_") + keys[i];
-        }
-
+    updateTopCheck(stack) {
+        let id = stack.pop();
+        let dom = document.getElementById(id);
+        let keys = id.split("_");
         keys.shift();
+        let parentId = stack[stack.length-1];
 
-        //避免父节点被收缩
         if(keys.length) { 
             let cur = this.tree;
             for(let i=0;i<keys.length-2;i++) {
@@ -163,32 +168,48 @@ class Tree {
                         parentDom.checked = true;
                     }
                 }
-                this.updateTopCheck(parentDom);
+                this.updateTopCheck(stack);
             }
         }
     }
 
+    //修改disabled的节点
+    updateDisabledCheck(disabledStack,parentChecked) {
+        let cur = disabledStack.pop();
+        let { node,id } = cur;
+        let dom = document.getElementById(id);
+        let allSelect = true;
+        node.children.forEach(item=> {
+            !item.checked?allSelect = false:"";
+        })
+
+        dom?dom.checked = allSelect:"";
+        node.checked = allSelect;
+    }
+
     updateCheck(dom) {
-        //对这层选项进行修改
         let keys = dom.id.split("_");
+        let stack = []; //用于记录父节点id
+        for(let i=1;i<keys.length;i++) {
+            stack.push(stack.length===0?(keys[0]+"_"+keys[i]):stack[stack.length-1]+"_"+keys[i]);
+        }
+
         keys.shift();
         
-        //避免父节点被收缩
-        if(keys.length) { 
-            let cur = this.tree;
-            for(let i=0;i<keys.length-1;i++) {
-                cur = cur[keys[i]].children;
-            }
-            cur = cur[keys[keys.length-1]];
-            cur.checked = !cur.checked;
-            dom.checked = cur.checked;
-            cur.children.forEach((item,index)=> {
-                this.updateBottomCheck(dom.id+"_"+index,cur.children[index],cur.checked);
-            })
+        //对这层和底层进行修改
+        let cur = this.tree;
+        for(let i=0;i<keys.length-1;i++) {
+            cur = cur[keys[i]].children;
         }
+        cur = cur[keys[keys.length-1]];
+        let disabledStack = []; //用于存储disabled的节点
+        this.updateBottomCheck(dom.id,cur,!cur.checked,disabledStack);
         
-        
-        this.updateTopCheck(dom);
+        //对disabled节点进行单独处理
+        if(disabledStack.length) this.updateDisabledCheck(disabledStack,cur.checked);
+
+        //对上层进行修改
+        this.updateTopCheck(stack);
     }
 
     //对节点进行创建

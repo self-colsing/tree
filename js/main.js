@@ -8,7 +8,8 @@ window.onload = function() {
                     name: "tree_0_0"
                 },{
                     name: "tree_0_1"
-                }]
+                }],
+                disabled: true
             },{
                 name: "tree_1",
                 children: [{
@@ -35,14 +36,15 @@ window.onload = function() {
                         name: "tree_2_1_2"
                     },{
                         name: "tree_2_1_3"
-                    }]
+                    }],
+                    disabled: true
                 }]
             }]
         },{
             name: "video"
         }],
         auto: true, //是否默认展开
-        lazyload: true, //是否懒加载
+        lazyload: false, //是否懒加载
         hasCheck: true, //是否开启选项
         filters: [],
         id: "tree"
