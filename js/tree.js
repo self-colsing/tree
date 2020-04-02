@@ -2,9 +2,6 @@ class Tree {
     constructor(params) {
         //参数默认值
         let temp = {
-            "tree": {
-                "新建文件夹": null
-            },
             "auto": false,
             "lazyload": false,
             "hasCheck": false,
@@ -16,36 +13,35 @@ class Tree {
             if(!params[key]) this[key] = temp[key];
             else this[key] = params[key];
         }
+        
 
         //对树的数据结构进行重构成满足需求的
-        this.tree = {};
+        if(!params.tree) params.tree = [{
+            "name": "newFile",
+            "children": []
+        }];
+        this.tree = [];
         this.setTree(params.tree,this.tree);
-
         this.createTree();
     }
 
     //重构树的结构
     setTree(tree,cur) {
-        let count = 0;
-        cur.child = []; //存储子节点
-        for(let key in tree) {
-            cur.child.push({
-                "name": key,
-            });
-            this.setTree(tree[key],cur.child[count]);
-            count++;
+        for(let i=0;i<tree.length;i++) {
+            cur.push({
+                name: tree[i].name,
+                children: [],
+                spread: this.auto
+            })
+            if(tree[i].children) this.setTree(tree[i].children,cur[i].children)
         }
-
-        if(cur === this.tree) cur.spread = true;
-        else cur.spread = this.auto; //是否展开
     }
     
     //添加节点的具体代码
-    setDom(dom,node,str) {
-        if(!str) str="tree"; //节点id的字段
-        
-        if(this.lazyload || node.spread) {
-            for(let i = 0;i<node.child.length;i++) {
+    //参数:节点，节点对应的tree位置，节点的id名，节点是否应该展开
+    setDom(dom,node,str,spread) {
+        if(!this.lazyload || spread) {
+            for(let i = 0;i<node.length;i++) {
                 let div = document.createElement("div");
                 let child = document.createElement("div");
 
@@ -62,21 +58,21 @@ class Tree {
                 child.className = "treeNode";
 
                 //添加类名判断是收缩还是扩展
-                if(node.child[i].child.length!=0) {
-                    if(node.child[i].spread) child.className = child.className + " shrinkNode";
+                if(node[i].children.length!=0) {
+                    if(node[i].spread) child.className = child.className + " shrinkNode";
                     else child.className = child.className + " spreadNode";
                 }; 
 
-                //懒加载的方式显示
-                if(this.lazyload) {
-                    if(!node.spread) child.style.display = "none";
+                //非懒加载的方式显示
+                if(!this.lazyload) {
+                    if(!spread) child.style.display = "none";
                     else child.style.display = "";
                 } 
 
-                child.innerHTML = child.innerHTML + node.child[i].name;
+                child.innerHTML = child.innerHTML + node[i].name;
                 div.appendChild(child);
 
-                this.setDom(div,node.child[i],str+"_"+i);
+                this.setDom(div,node[i].children,str+"_"+i);
                 dom.appendChild(div);
             }
         }
@@ -91,11 +87,12 @@ class Tree {
         //避免父节点被收缩
         if(keys.length) {
             let cur = this.tree;
-            for(let i=0;i<keys.length;i++) {
-                cur = cur.child[keys[i]];
+            for(let i=0;i<keys.length-1;i++) {
+                cur = cur[keys[i]].children;
             }
+            cur = cur[keys[keys.length-1]];
 
-            if(cur.child.length) {
+            if(cur.children.length) {
                 cur.spread = !cur.spread;
                 if(cur.spread) dom.className = "treeNode shrinkNode";
                 else dom.className = "treeNode spreadNode";
@@ -108,7 +105,7 @@ class Tree {
                 parent.removeChild(child[0]);
             }
 
-            this.setDom(parent,cur,dom.id)
+            this.setDom(parent,cur.children,dom.id,cur.spread);
         }
     }
 
@@ -119,9 +116,10 @@ class Tree {
         if(!dom) throw new Error("dom is undefined");
         dom.innerHTML = ""; //对节点内部内容进行清除
         dom.className = "treeParent";
-        this.setDom(dom,this.tree);
+        console.log(this.tree);
+        this.setDom(dom,this.tree,"tree",true);
 
-        dom.addEventListener("click",this.clickTree.bind(this));
+        dom.addEventListener("click",this.clickTree.bind(this)); //点击事件委任到父节点上
     }
 
     //对节点进行更新
@@ -129,7 +127,6 @@ class Tree {
         let id = this.id;
         let dom = document.getElementById(id);
         if(!dom) throw new Error("dom is undefined");
-        
 
         this.updateDom(editDom)
     }
