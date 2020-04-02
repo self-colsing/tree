@@ -5,7 +5,9 @@ class Tree {
             "auto": false,
             "lazyload": false,
             "hasCheck": false,
-            "id": "tree"
+            "id": "tree",
+            "filter": false,
+            "filterWord": ""
         }
 
         //未定义参数赋默认值
@@ -20,9 +22,13 @@ class Tree {
             "name": "newFile",
             "children": []
         }];
+
         this.tree = [];
         this.setTree(params.tree,this.tree);
+        if(this.filter) this.setFilteTree(this.tree); //对显示数据进行过滤
+
         this.createTree();
+        if(this.filter) this.createFilter();
     }
 
     //重构树的结构
@@ -35,10 +41,23 @@ class Tree {
                 checked: false,
                 disabled: tree[i].disabled?true:false
             })
-            if(tree[i].children) this.setTree(tree[i].children,cur[i].children)
+            if(tree[i].children) this.setTree(tree[i].children,cur[i].children);
         }
     }
     
+    setFilteTree(node) {
+        let parentHasFilter = false;
+        node.forEach(item=> {
+            let hasFilter = false; //底层是否有过滤关键字;
+            if(item.children.length) this.setFilteTree(item.children)?hasFilter=true:"";
+            item.name.indexOf(this.filterWord) !== -1?hasFilter = true:"";
+            item.hasFilter = hasFilter;
+
+            if(hasFilter) parentHasFilter = true;
+        })
+        return parentHasFilter;
+    }
+
     //添加节点的具体代码
     //参数:节点，节点对应的tree位置，节点的id名，节点是否应该展开
     setDom(dom,node,str,spread) {
@@ -62,8 +81,10 @@ class Tree {
                     if(!spread) div.style.display = "none";
                     else div.style.display = "";
                 } 
-                child.innerHTML = node[i].name;
-                div.appendChild(child);
+                if(node[i].hasFilter!==false) {
+                    child.innerHTML = node[i].name;
+                    div.appendChild(child);
+                }
 
                 //添加选项框
                 if(this.hasCheck) {
@@ -155,14 +176,11 @@ class Tree {
                 else if(dom.checked && !parentDom.checked){
                     let allSelect = true; //是否全选中
                     cur = parent.children[keys[keys.length-1]]; //点击的选项
-                    let children = parentDom.parentNode.parentNode.children; //同级的选项
 
-                    for(let i=0;i<children.length;i++) {
-                        if(children[i].className.indexOf("treeChild")!=-1 && children[i].firstChild.firstChild!=dom) {
-                            let otherDom = children[i].firstChild.firstChild;//同级的其他节点
-                            otherDom.checked === false?allSelect = false:"";
-                        }
-                    }
+                    parent.children.forEach((item,index)=> {
+                        if(index!=keys[keys.length-1]) item.checked === false?allSelect = false:"";
+                    })
+
                     if(allSelect) {
                         parent.checked = true;
                         parentDom.checked = true;
@@ -224,13 +242,47 @@ class Tree {
         dom.addEventListener("click",this.clickTree.bind(this)); //点击事件委任到父节点上
     }
 
+    filterData() {
+        this.filterWord = document.getElementById("treeFilter").value;
+        let id = this.id;
+        let dom = document.getElementById(id);
+        if(!dom) throw new Error("dom is undefined");
+        
+        let children = dom.children;
+        let i=0;
+        while(i<children.length) {
+            if(children[i].className === "treeFilterContainer") i++;
+            else {
+                dom.removeChild(children[i]);
+            }
+        }
+        this.setFilteTree(this.tree);
+        this.setDom(dom,this.tree,"tree",true);
+    }
+
+    //创建过滤表单
+    createFilter() {
+        let id = this.id;
+        let dom = document.getElementById(id);
+        if(!dom) throw new Error("dom is undefined");
+        let container = document.createElement("div");
+        let input = document.createElement("input");
+        input.id = "treeFilter";
+        input.placeholder = "输入关键字进行过滤";
+        container.className = "treeFilterContainer";
+        container.append(input);
+        dom.prepend(container);
+
+        input.addEventListener("keyup",this.filterData.bind(this));
+    }
+
     //对节点进行更新
     updateTree(editDom) {
         let id = this.id;
         let dom = document.getElementById(id);
         if(!dom) throw new Error("dom is undefined");
 
-        this.updateDom(editDom)
+        this.updateDom(editDom);
     }
 
     //节点的扩展和收缩
@@ -239,6 +291,6 @@ class Tree {
         if(e.path[0].nodeName.toLowerCase() === "div") this.updateTree(e.path[0]);
 
         //checkbox的点击事件
-        if(e.path[0].nodeName.toLowerCase() === "input") this.updateCheck(e.path[0]);
+        else if(e.path[0].type === "checkbox") this.updateCheck(e.path[0]);
     }
 }

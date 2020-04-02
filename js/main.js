@@ -44,9 +44,9 @@ window.onload = function() {
             name: "video"
         }],
         auto: true, //是否默认展开
-        lazyload: false, //是否懒加载
+        lazyload: true, //是否懒加载
         hasCheck: true, //是否开启选项
-        filters: [],
+        filter: true, //是否开启过滤节点
         id: "tree"
     })
 }
