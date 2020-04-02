@@ -31,7 +31,8 @@ class Tree {
             cur.push({
                 name: tree[i].name,
                 children: [],
-                spread: this.auto
+                spread: this.auto,
+                checked: false
             })
             if(tree[i].children) this.setTree(tree[i].children,cur[i].children)
         }
@@ -45,14 +46,6 @@ class Tree {
                 let div = document.createElement("div");
                 let child = document.createElement("div");
 
-                //添加选项框
-                if(this.hasCheck) {
-                    let checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.className = "treeCheckbox";
-                    child.appendChild(checkbox);
-                    checkbox.id = str.replace("tree","checkbox")+"_"+i;
-                }
                 div.className = "treeChild";
                 child.id = str+"_"+i;
                 child.className = "treeNode";
@@ -65,14 +58,22 @@ class Tree {
 
                 //非懒加载的方式显示
                 if(!this.lazyload) {
-                    if(!spread) child.style.display = "none";
-                    else child.style.display = "";
+                    if(!spread) div.style.display = "none";
+                    else div.style.display = "";
                 } 
-
-                child.innerHTML = child.innerHTML + node[i].name;
+                child.innerHTML = node[i].name;
                 div.appendChild(child);
 
-                this.setDom(div,node[i].children,str+"_"+i);
+                //添加选项框
+                if(this.hasCheck) {
+                    let checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "treeCheckbox";
+                    child.prepend(checkbox);
+                    checkbox.id = str.replace("tree","checkbox")+"_"+i;
+                    checkbox.checked = node[i].checked;
+                }
+                this.setDom(div,node[i].children,str+"_"+i,node[i].spread);
                 dom.appendChild(div);
             }
         }
@@ -109,6 +110,87 @@ class Tree {
         }
     }
 
+    //修改底层树的选项
+    updateBottomCheck(id,node,parentChecked) {
+        let dom = document.getElementById(id);
+        if(node.checked !== parentChecked) {
+            dom?dom.checked = parentChecked:"";
+            node.checked = parentChecked;
+            node.children.forEach((item,index)=> {
+                this.updateBottomCheck(id+"_"+index,node.children[index],parentChecked);
+            })
+        }
+        
+    }
+
+    //修改上层树的选项
+    updateTopCheck(dom) {
+        let keys = dom.id.split("_");
+        let parentId = "";
+        for(let i=0;i<keys.length-1;i++) {
+            parentId = parentId + (i===0?"":"_") + keys[i];
+        }
+
+        keys.shift();
+
+        //避免父节点被收缩
+        if(keys.length) { 
+            let cur = this.tree;
+            for(let i=0;i<keys.length-2;i++) {
+                cur = cur[keys[i]].children;
+            }
+            let parent = cur[keys[keys.length-2]]; //点击选项的上一级选项
+            
+            if(parent) {
+                let parentDom = document.getElementById(parentId);
+                if(!dom.checked && parentDom.checked) {
+                    parent.checked = false;
+                    parentDom.checked = false;
+                }
+                else if(dom.checked && !parentDom.checked){
+                    let allSelect = true; //是否全选中
+                    cur = parent.children[keys[keys.length-1]]; //点击的选项
+                    let children = parentDom.parentNode.parentNode.children; //同级的选项
+
+                    for(let i=0;i<children.length;i++) {
+                        if(children[i].className.indexOf("treeChild")!=-1 && children[i].firstChild.firstChild!=dom) {
+                            let otherDom = children[i].firstChild.firstChild;//同级的其他节点
+                            otherDom.checked === false?allSelect = false:"";
+                        }
+                    }
+                    if(allSelect) {
+                        parent.checked = true;
+                        parentDom.checked = true;
+                    }
+                }
+                this.updateTopCheck(parentDom);
+            }
+        }
+    }
+
+    updateCheck(dom) {
+        //对这层选项进行修改
+        let keys = dom.id.split("_");
+        keys.shift();
+        
+        //避免父节点被收缩
+        if(keys.length) { 
+            let cur = this.tree;
+            for(let i=0;i<keys.length-1;i++) {
+                cur = cur[keys[i]].children;
+            }
+            cur = cur[keys[keys.length-1]];
+            cur.checked = !cur.checked;
+            dom.checked = cur.checked;
+            cur.children.forEach((item,index)=> {
+                this.updateBottomCheck(dom.id+"_"+index,cur.children[index],cur.checked);
+            })
+        }
+        
+        
+        this.updateTopCheck(dom);
+    }
+
     //对节点进行创建
     createTree() {
         let id = this.id;
@@ -116,7 +198,6 @@ class Tree {
         if(!dom) throw new Error("dom is undefined");
         dom.innerHTML = ""; //对节点内部内容进行清除
         dom.className = "treeParent";
-        console.log(this.tree);
         this.setDom(dom,this.tree,"tree",true);
 
         dom.addEventListener("click",this.clickTree.bind(this)); //点击事件委任到父节点上
@@ -133,6 +214,10 @@ class Tree {
 
     //节点的扩展和收缩
     clickTree(e) {
+        //节点的点击事件
         if(e.path[0].nodeName.toLowerCase() === "div") this.updateTree(e.path[0]);
+
+        //checkbox的点击事件
+        if(e.path[0].nodeName.toLowerCase() === "input") this.updateCheck(e.path[0]);
     }
 }
