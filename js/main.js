@@ -1,3 +1,6 @@
+import "../css/tree.css"
+import {Tree} from "./tree.js"
+
 window.onload = function() {
     let tree = new Tree({
         tree: [{ //树形控件的数据结构

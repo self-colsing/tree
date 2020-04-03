@@ -510,3 +510,5 @@ class Tree {
         this.setDom(dom,this.tree,"tree",true);
     }
 }
+
+module.exports = {Tree};
