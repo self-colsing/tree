@@ -49,7 +49,8 @@ class Tree {
     getSpreadChildNum(cur) {
         let count = 0; //标记当前节点子孙数量
         cur.children.forEach(item=> {
-            count = item.spread?(count + this.getSpreadChildNum(item)+1):count+1;
+            if(item.hasFilter===false) return;
+            else count = item.spread?(count + this.getSpreadChildNum(item)+1):count+1;
         })
         return count;
     }
@@ -113,7 +114,8 @@ class Tree {
     }
 
     //伸展节点动画的具体函数
-    spreadTree(dom) {
+    //fromChild判断是不是有底层触发的
+    spreadTree(dom,fromChild) {
         let keys = dom.id.split("_");
         keys.shift();
         if(keys.length) {
@@ -124,22 +126,30 @@ class Tree {
             cur = cur[keys[keys.length-1]];
             let parent = dom.parentNode;
             //高度的动画
-            let totalHeight = (this.getSpreadChildNum(cur,true)+1)*30; //通过计算节点数量计算高度
+            let totalHeight = (this.getSpreadChildNum(cur)+1)*30; //通过计算节点数量计算高度
+            console.log(parent.style.height,totalHeight)
             //首次伸展需要一次延迟改变高度
-            if(!cur.spread && parent.style.height==="") {
-                parent.style.height = totalHeight+"px";
-                setTimeout(()=>{parent.style.height = "30px";},0)
-            } else if(cur.spread && parent.style.height===""){
-                parent.style.height = "30px";
-                setTimeout(()=>{parent.style.height = totalHeight+"px";},0)
-                console.log(parent.parentNode)
-            } else if(totalHeight === parseInt(parent.style.height)) {
-                parent.style.height = "30px";
+            if(!fromChild) {
+                if(!cur.spread && parent.style.height==="") {
+                    parent.style.height = totalHeight+"px";
+                    setTimeout(()=>{parent.style.height = "30px";},0);
+                } else if(cur.spread && parent.style.height===""){
+                    parent.style.height = "30px";
+                    setTimeout(()=>{parent.style.height = totalHeight+"px";},0);
+                } else if(totalHeight === parseInt(parent.style.height)) {
+                    parent.style.height = "30px";
+                } else {
+                    parent.style.height = totalHeight+ "px";
+                }
             } else {
-                parent.style.height = totalHeight+ "px";
+                if(totalHeight === parseInt(parent.style.height)) {
+                    parent.style.height = "30px";
+                } else {
+                    parent.style.height = totalHeight+ "px";
+                }
             }
             //需要对父节点采用动画，否则父节点高度定死
-            if(parent.parentNode.firstChild) this.spreadTree(parent.parentNode.firstChild);  
+            if(parent.parentNode.firstChild) this.spreadTree(parent.parentNode.firstChild,true);  
         }
     }
     //更新节点的具体代码
@@ -184,7 +194,7 @@ class Tree {
                         while(child.length) {
                             parent.removeChild(child[0]);
                         }
-                        this.setDom(parent,cur.children,dom.id,cur.spread);
+                        if(this.run) this.setDom(parent,cur.children,dom.id,cur.spread); //避免在触发前，过滤节点导致bug
                         this.run = false;
                     },200)
                 }
@@ -307,6 +317,7 @@ class Tree {
         let dom = document.getElementById(id);
         if(!dom) throw new Error("dom is undefined");
         
+        this.run = false;
         let children = dom.children;
         let i=0;
         while(i<children.length) {
