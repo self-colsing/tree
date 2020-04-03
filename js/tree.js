@@ -45,6 +45,16 @@ class Tree {
         }
     }
     
+    //获取展开的后代节点的数量
+    getSpreadChildNum(cur) {
+        let count = 0; //标记当前节点子孙数量
+        cur.children.forEach(item=> {
+            if(item.hasFilter===false) return;
+            else count = item.spread?(count + this.getSpreadChildNum(item)+1):count+1;
+        })
+        return count;
+    }
+
     setFilteTree(node) {
         let parentHasFilter = false;
         node.forEach(item=> {
@@ -103,6 +113,45 @@ class Tree {
         return dom;
     }
 
+    //伸展节点动画的具体函数
+    //fromChild判断是不是有底层触发的
+    spreadTree(dom,fromChild) {
+        let keys = dom.id.split("_");
+        keys.shift();
+        if(keys.length) {
+            let cur = this.tree;
+            for(let i=0;i<keys.length-1;i++) {
+                cur = cur[keys[i]].children;
+            }
+            cur = cur[keys[keys.length-1]];
+            let parent = dom.parentNode;
+            //高度的动画
+            let totalHeight = (this.getSpreadChildNum(cur)+1)*30; //通过计算节点数量计算高度
+            console.log(parent.style.height,totalHeight)
+            //首次伸展需要一次延迟改变高度
+            if(!fromChild) {
+                if(!cur.spread && parent.style.height==="") {
+                    parent.style.height = totalHeight+"px";
+                    setTimeout(()=>{parent.style.height = "30px";},0);
+                } else if(cur.spread && parent.style.height===""){
+                    parent.style.height = "30px";
+                    setTimeout(()=>{parent.style.height = totalHeight+"px";},0);
+                } else if(totalHeight === parseInt(parent.style.height)) {
+                    parent.style.height = "30px";
+                } else {
+                    parent.style.height = totalHeight+ "px";
+                }
+            } else {
+                if(totalHeight === parseInt(parent.style.height)) {
+                    parent.style.height = "30px";
+                } else {
+                    parent.style.height = totalHeight+ "px";
+                }
+            }
+            //需要对父节点采用动画，否则父节点高度定死
+            if(parent.parentNode.firstChild) this.spreadTree(parent.parentNode.firstChild,true);  
+        }
+    }
     //更新节点的具体代码
     updateDom(dom) {
         let keys = dom.id.split("_");
@@ -110,26 +159,46 @@ class Tree {
         
         //避免父节点被收缩
         if(keys.length) {
-            let cur = this.tree;
-            for(let i=0;i<keys.length-1;i++) {
-                cur = cur[keys[i]].children;
+            if(!this.run) {
+                console.log("run")
+                this.run = true;
+                let parent = dom.parentNode;
+                let cur = this.tree;
+                for(let i=0;i<keys.length-1;i++) {
+                    cur = cur[keys[i]].children;
+                }
+                cur = cur[keys[keys.length-1]];
+
+                //+和-的切换
+                if(cur.children.length) {
+                    cur.spread = !cur.spread;
+                    if(cur.spread) dom.className = "treeNode shrinkNode";
+                    else dom.className = "treeNode spreadNode";
+                };
+                
+                if(cur.children.length) this.spreadTree(dom);
+
+                //收缩状态时节点需要在动画播放结束后清楚
+                //伸展状态时节点需要在动画播放前添加
+                if(cur.spread) {
+                    let child = parent.getElementsByClassName("treeChild");
+                    while(child.length) {
+                        parent.removeChild(child[0]);
+                    }
+                    this.setDom(parent,cur.children,dom.id,cur.spread);
+                    setTimeout(()=> {this.run = false;},200);
+                } else {
+                    setTimeout(()=> {
+                        //去除多余节点
+                        let child = parent.getElementsByClassName("treeChild");
+                        while(child.length) {
+                            parent.removeChild(child[0]);
+                        }
+                        if(this.run) this.setDom(parent,cur.children,dom.id,cur.spread); //避免在触发前，过滤节点导致bug
+                        this.run = false;
+                    },200)
+                }
             }
-            cur = cur[keys[keys.length-1]];
-
-            if(cur.children.length) {
-                cur.spread = !cur.spread;
-                if(cur.spread) dom.className = "treeNode shrinkNode";
-                else dom.className = "treeNode spreadNode";
-            };
-
-            //去除多余节点
-            let parent = dom.parentNode;
-            let child = parent.getElementsByClassName("treeChild");
-            while(child.length) {
-                parent.removeChild(child[0]);
-            }
-
-            this.setDom(parent,cur.children,dom.id,cur.spread);
         }
     }
 
@@ -248,6 +317,7 @@ class Tree {
         let dom = document.getElementById(id);
         if(!dom) throw new Error("dom is undefined");
         
+        this.run = false;
         let children = dom.children;
         let i=0;
         while(i<children.length) {
@@ -258,6 +328,21 @@ class Tree {
         }
         this.setFilteTree(this.tree);
         this.setDom(dom,this.tree,"tree",true);
+        
+        //判断有没有数据
+        let noData = true;
+        this.tree.forEach(item=> {
+            item.hasFilter?noData = false:"";
+        })
+        if(noData) {
+            let p = document.createElement("p");
+            p.id = "treeNoData";
+            p.innerHTML = "暂无数据";
+            document.getElementById("tree").appendChild(p);
+        } else {
+            let noDataDom =  document.getElementById("treeNoData");
+            if(noDataDom) document.getElementById("tree").removeChild(noDataDom);
+        }
     }
 
     //创建过滤表单
@@ -281,7 +366,6 @@ class Tree {
         let id = this.id;
         let dom = document.getElementById(id);
         if(!dom) throw new Error("dom is undefined");
-
         this.updateDom(editDom);
     }
 
