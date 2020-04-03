@@ -7,6 +7,7 @@ class Tree {
             "hasCheck": false,
             "id": "tree",
             "filter": false,
+            "draggable": false,
             "filterWord": ""
         }
 
@@ -77,9 +78,10 @@ class Tree {
                 let child = document.createElement("div");
 
                 div.className = "treeChild";
+                
                 child.id = str+"_"+i;
                 child.className = "treeNode";
-
+                if(this.draggable) child.draggable = true;
                 //添加类名判断是收缩还是扩展
                 if(node[i].children.length!=0) {
                     if(node[i].spread) child.className = child.className + " shrinkNode";
@@ -127,7 +129,6 @@ class Tree {
             let parent = dom.parentNode;
             //高度的动画
             let totalHeight = (this.getSpreadChildNum(cur)+1)*30; //通过计算节点数量计算高度
-            console.log(parent.style.height,totalHeight)
             //首次伸展需要一次延迟改变高度
             if(!fromChild) {
                 if(!cur.spread && parent.style.height==="") {
@@ -160,7 +161,6 @@ class Tree {
         //避免父节点被收缩
         if(keys.length) {
             if(!this.run) {
-                console.log("run")
                 this.run = true;
                 let parent = dom.parentNode;
                 let cur = this.tree;
@@ -299,6 +299,16 @@ class Tree {
         this.updateTopCheck(stack);
     }
 
+    //把所有已经选择的选项清空
+    clearCheck(cur) {
+        cur?"":cur = this.tree;
+        cur.forEach(item=> {
+            item.checked = false;
+            this.clearCheck(item.children);
+        })
+        
+    }
+
     //对节点进行创建
     createTree() {
         let id = this.id;
@@ -309,6 +319,12 @@ class Tree {
         this.setDom(dom,this.tree,"tree",true);
 
         dom.addEventListener("click",this.clickTree.bind(this)); //点击事件委任到父节点上
+
+        if(this.draggable) {
+            dom.addEventListener("dragstart",this.dragTreeStart.bind(this));
+            dom.addEventListener("dragend",this.dragTreeEnd.bind(this));
+            dom.addEventListener("dragover",this.dragTreeOver.bind(this));
+        }
     }
 
     filterData() {
@@ -376,5 +392,121 @@ class Tree {
 
         //checkbox的点击事件
         else if(e.path[0].type === "checkbox") this.updateCheck(e.path[0]);
+    }
+
+    //节点拖动事件
+    dragTreeStart(e) {
+         //获取当前拖动位置id
+        let dom = e.path[0];
+        let className = e.path[0].className;
+        this.drag? "":this.drag = {};
+        if(className.indexOf("treeChild")!==-1) {
+            this.drag.startNode = e.path[0].firstChild.id;
+        } else if(className.indexOf("treeNode")!==-1 || className.indexOf("treeCheckbox"!=-1)) {
+            this.drag.startNode = dom.id.replace("checkbox","tree");
+        } else return;
+    }
+    dragTreeOver(e) {
+        //获取当前拖动位置id
+        let dom = e.path[0];
+        let className = e.path[0].className;
+        this.drag? "":this.drag = {};
+        if(className.indexOf("treeChild")!==-1) {
+            !this.drag.overNode ? this.drag.overNode = e.path[0].firstChild.id:"";
+            if(this.drag.overNode !== e.path[0].firstChild.id){
+                let lastOverDom = document.getElementById(this.drag.overNode);
+                lastOverDom.style["borderBottom"] = "1px solid white";
+                lastOverDom.style["borderTop"] = "1px solid white";
+                lastOverDom.style["background"] = "white";
+                this.drag.overNode = e.path[0].firstChild.id;
+            }
+        } else if(className.indexOf("treeNode")!==-1 || className.indexOf("treeCheckbox")!=-1) {
+            !this.drag.overNode ? this.drag.overNode = dom.id.replace("checkbox","tree"):"";
+            if(this.drag.overNode !== dom.id.replace("checkbox","tree")){
+                let lastOverDom = document.getElementById(this.drag.overNode);
+                lastOverDom.style["borderBottom"] = "1px solid white";
+                lastOverDom.style["borderTop"] = "1px solid white";
+                lastOverDom.style["background"] = "white";
+                this.drag.overNode = dom.id.replace("checkbox","tree");
+            }
+        } else return;
+
+        //对相应位置的节点进行操作
+        if(this.drag.overNode.indexOf(this.drag.startNode)==-1) {
+            let clientY = e.clientY; //鼠标的位置
+            let overDom = document.getElementById(this.drag.overNode);
+            let overY = overDom.offsetTop; //节点的位置
+            let relativeY = clientY - overY; //相对距离
+            
+            
+            //拖动在节点中间
+            if(relativeY<=23 && relativeY>=7) {
+                overDom.style["borderBottom"] = "1px solid white";
+                overDom.style["borderTop"] = "1px solid white";
+                overDom.style["background"] = "rgba(0,0,0,0.1)"
+                this.drag.dragWay = 1; //中间
+            } else if(relativeY>23) {
+                overDom.style["borderBottom"] = "1px solid rgba(0,0,0,0.8)";
+                overDom.style["borderTop"] = "1px solid white";
+                overDom.style["background"] = "white"
+                this.drag.dragWay = 2; //下面
+            } 
+            else {
+                overDom.style["borderBottom"] = "1px solid white";
+                overDom.style["borderTop"] = "1px solid rgba(0,0,0,0.8)";
+                overDom.style["background"] = "white"
+                this.drag.dragWay = 0; //上面
+            }
+        }
+    }
+
+    dragTreeEnd(e) {
+        let lastOverDom = document.getElementById(this.drag.overNode);
+        lastOverDom.style["borderBottom"] = "1px solid white";
+        lastOverDom.style["borderTop"] = "1px solid white";
+        lastOverDom.style["background"] = "white";
+
+        //数据结构修改相关代码
+        let start = this.drag.startNode.split("_");
+        start.shift();
+        let over = this.drag.overNode.split("_");
+        over.shift();
+
+        let startNode = this.tree;
+        for(let i=0;i<start.length-1;i++) {
+            startNode = startNode[start[i]].children;
+        }        
+        startNode = startNode.splice(start[start.length-1],1); //把需要移动节点切出来
+
+        let overNode = this.tree;
+        for(let i=0;i<over.length-1;i++) {
+            overNode = overNode[over[i]].children;
+        }
+
+        switch(this.drag.dragWay) {
+            case 0:
+                overNode.splice(over[over.length-1],0,startNode[0]);
+                break;
+            case 1:
+                overNode[over[over.length-1]].children.push(startNode[0]);
+                break;
+            case 2:
+                overNode.splice(over[over.length-1]+1,0,startNode[0]);
+                break;
+            default:
+                break;
+        }
+
+        let dom = document.getElementById(this.id);
+        let children = dom.children;
+        let i=0;
+        while(i<children.length) {
+            if(children[i].className === "treeFilterContainer") i++;
+            else {
+                dom.removeChild(children[i]);
+            }
+        }
+        this.clearCheck();
+        this.setDom(dom,this.tree,"tree",true);
     }
 }
