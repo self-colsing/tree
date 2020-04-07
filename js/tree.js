@@ -17,7 +17,6 @@ class Tree {
             else this[key] = params[key];
         }
         
-
         //对树的数据结构进行重构成满足需求的
         if(!params.tree) params.tree = [{
             "name": "newFile",
@@ -406,6 +405,7 @@ class Tree {
             this.drag.startNode = dom.id.replace("checkbox","tree");
         } else return;
     }
+
     dragTreeOver(e) {
         //获取当前拖动位置id
         let dom = e.path[0];
@@ -437,8 +437,6 @@ class Tree {
             let overDom = document.getElementById(this.drag.overNode);
             let overY = overDom.offsetTop; //节点的位置
             let relativeY = clientY - overY; //相对距离
-            
-            
             //拖动在节点中间
             if(relativeY<=23 && relativeY>=7) {
                 overDom.style["borderBottom"] = "1px solid white";
@@ -460,7 +458,7 @@ class Tree {
         }
     }
 
-    dragTreeEnd(e) {
+    dragTreeEnd() {
         let lastOverDom = document.getElementById(this.drag.overNode);
         lastOverDom.style["borderBottom"] = "1px solid white";
         lastOverDom.style["borderTop"] = "1px solid white";

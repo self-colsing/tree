@@ -24,6 +24,9 @@ module.exports={
 						}
 					}
 				]
+			},{
+				test:/\.js$/i,
+				use: 'babel-loader'
 			}
 		]
 	}
