@@ -8,7 +8,8 @@ class Tree {
             "id": "tree",
             "filter": false,
             "draggable": false,
-            "filterWord": ""
+            "filterWord": "",
+            "checkFunc": ()=>{}
         }
 
         //未定义参数赋默认值
@@ -22,7 +23,7 @@ class Tree {
             "name": "newFile",
             "children": []
         }];
-
+        this.set = new Set(); //用于判断id是否唯一
         this.tree = [];
         this.setTree(params.tree,this.tree);
         if(this.filter) this.setFilteTree(this.tree); //对显示数据进行过滤
@@ -34,11 +35,14 @@ class Tree {
     //重构树的结构
     setTree(tree,cur) {
         for(let i=0;i<tree.length;i++) {
+            if(tree[i].id === undefined || this.set.has(tree[i].id)) throw new Error("id must exist and be unique!");
+            this.set.add(tree[i].id);
             cur.push({
                 name: tree[i].name,
+                id: tree[i].id,
                 children: [],
                 spread: this.auto,
-                checked: false,
+                checked: tree[i].checked?true:false,
                 disabled: tree[i].disabled?true:false
             })
             if(tree[i].children) this.setTree(tree[i].children,cur[i].children);
@@ -308,6 +312,22 @@ class Tree {
         
     }
 
+    //返回勾选的name的名字
+    getCheck(cur,arr) {
+        if(cur === undefined) {
+            arr = [];
+            cur = this.tree;
+        }
+        cur.forEach(item=> {
+            if(item.checked) arr.push({
+                name: item.name,
+                id: item.id
+            });
+            this.getCheck(item.children,arr);
+        })
+        return arr;
+    }
+
     //对节点进行创建
     createTree() {
         let id = this.id;
@@ -390,7 +410,20 @@ class Tree {
         if(e.path[0].nodeName.toLowerCase() === "div") this.updateTree(e.path[0]);
 
         //checkbox的点击事件
-        else if(e.path[0].type === "checkbox") this.updateCheck(e.path[0]);
+        else if(e.path[0].type === "checkbox") {
+            this.updateCheck(e.path[0])
+
+            let keys = e.path[0].id.split("_");
+            let cur = this.tree;
+            for(let i = 1;i<keys.length-1;i++) {
+                cur = cur[keys[i]].children;
+            }
+            cur = cur[keys[keys.length-1]];
+            this.checkFunc({
+                id: cur.id,
+                name: cur.name
+            });
+        };
     }
 
     //节点拖动事件
@@ -509,4 +542,4 @@ class Tree {
     }
 }
 
-module.exports = {Tree};
+// module.exports = {Tree};
