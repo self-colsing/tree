@@ -66,6 +66,7 @@ window.onload = function() {
             name: "video"
         }],
         auto: true, //是否默认展开
+        spreadOnly: true, //是否唯一展开
         lazyload: false, //是否懒加载
         hasCheck: true, //是否开启选项
         filter: true, //是否开启过滤节点
@@ -73,8 +74,8 @@ window.onload = function() {
         hasAppend: true, //是否可新增
         hasDelete: true, //是否可删除
         id: "tree",
-        checkFunc: (a,b)=>{
-            console.log(a,b);
+        checkFunc: (a)=>{
+            // console.log(a);
         }
     })
 

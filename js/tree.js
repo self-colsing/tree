@@ -3,6 +3,7 @@ class Tree {
         //参数默认值
         let temp = {
             "auto": false,
+            "spreadOnly": false,
             "lazyload": false,
             "hasCheck": false,
             "hasAppend": false,
@@ -255,6 +256,7 @@ class Tree {
             });
         }
         let dom = document.getElementById(id);
+
         if(node.checked !== parentChecked) {
             dom?dom.checked = parentChecked:"";
             node.checked = parentChecked;
@@ -271,7 +273,10 @@ class Tree {
         let dom = document.getElementById(id);
         let keys = id.split("_");
         keys.shift();
-        let parentId = stack[stack.length-1];
+
+        let parentId = id.split("_");
+        parentId.pop();
+        parentId = parentId.join("_");
 
         if(keys.length) { 
             let cur = this.tree;
@@ -305,22 +310,28 @@ class Tree {
     }
 
     //修改disabled的节点
-    updateDisabledCheck(disabledStack) {
+    updateDisabledCheck(disabledStack,parentChecked) {
+        let canChange = true;
         while(disabledStack.length) {
             let cur = disabledStack.pop();
             let { node,id } = cur;
             let dom = document.getElementById(id);
             let allSelect = true;
 
+            //禁用节点的状态只有底层是不是全选决定
             if(!node.children.length) allSelect = false;
 
             node.children.forEach(item=> {
                 !item.checked?allSelect = false:"";
             })
 
-            dom?dom.checked = allSelect:"";
-            node.checked = allSelect;
+            dom?dom.checked = allSelect:""; //避免懒加载找不到下层节点
+            node.checked = allSelect; 
+            if(parentChecked !=node.checked) {
+                canChange = false;
+            }
         }
+        return canChange;
     }
 
     updateCheck(dom) {
@@ -340,11 +351,22 @@ class Tree {
         cur = cur[keys[keys.length-1]];
         let disabledStack = []; //用于存储disabled的节点
         this.updateBottomCheck(dom.id,cur,!cur.checked,disabledStack);
+
+        let set = new Set(stack);
+        //记录disabled节点
+        disabledStack.forEach(item=> {
+            let keys = item.id.split("_");
+            let stack = []; 
+            for(let i=1;i<keys.length;i++) {
+                stack.push(stack.length===0?(keys[0]+"_"+keys[i]):stack[stack.length-1]+"_"+keys[i]);
+                set.add(stack[stack.length-1]);
+            }
+        })
         //对disabled节点进行单独处理
         if(disabledStack.length) this.updateDisabledCheck(disabledStack,cur.checked);
 
-        //对上层进行修改
-        this.updateTopCheck(stack);
+        //对上层和disabled的上层进行修改
+        this.updateTopCheck(Array.from(set));
     }
 
     //把所有已经选择的选项清空
