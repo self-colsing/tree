@@ -5,6 +5,8 @@ class Tree {
             "auto": false,
             "lazyload": false,
             "hasCheck": false,
+            "hasAppend": false,
+            "hasDelete": false,
             "id": "tree",
             "filter": false,
             "draggable": false,
@@ -48,7 +50,16 @@ class Tree {
             if(tree[i].children) this.setTree(tree[i].children,cur[i].children);
         }
     }
-    
+    //根据id获取树对应的位置
+    getNode(id) {
+        let keys = id.split("_");
+        let cur = this.tree;
+        for(let i=1;i<keys.length-1;i++) {
+            cur = cur[keys[i]].children;
+        }
+        cur = cur[keys[keys.length-1]];
+        return cur;
+    }
     //获取展开的后代节点的数量
     getSpreadChildNum(cur) {
         let count = 0; //标记当前节点子孙数量
@@ -111,6 +122,21 @@ class Tree {
                     checkbox.checked = node[i].checked;
                     checkbox.disabled = node[i].disabled;
                 }
+
+                if(this.hasAppend) {
+                    let append = document.createElement("span");
+                    append.classList = "treeAppendText";
+                    append.innerHTML = "新增";
+                    child.appendChild(append);
+                }
+
+                if(this.hasDelete) {
+                    let del = document.createElement("span");
+                    del.classList = "treeDeleteText";
+                    del.innerHTML = "删除";
+                    child.appendChild(del);
+                }
+
                 this.setDom(div,node[i].children,str+"_"+i,node[i].spread);
                 dom.appendChild(div);
             }
@@ -149,7 +175,8 @@ class Tree {
                 if(totalHeight === parseInt(parent.style.height)) {
                     parent.style.height = "30px";
                 } else {
-                    parent.style.height = totalHeight+ "px";
+                    parent.style.height = parent.clientHeight+ "px";
+                    setTimeout(()=>{parent.style.height = totalHeight+"px";},0);
                 }
             }
             //需要对父节点采用动画，否则父节点高度定死
@@ -203,6 +230,20 @@ class Tree {
                 }
             }
         }
+    }
+
+    //用于刷新
+    refreshTree() {
+        let dom = document.getElementById(this.id);
+        let children = dom.children;
+        let i=0;
+        while(i<children.length) {
+            if(children[i].className === "treeFilterContainer") i++;
+            else {
+                dom.removeChild(children[i]);
+            }
+        }
+        this.setDom(dom,this.tree,"tree",true);
     }
 
     //修改底层树的选项
@@ -264,17 +305,22 @@ class Tree {
     }
 
     //修改disabled的节点
-    updateDisabledCheck(disabledStack,parentChecked) {
-        let cur = disabledStack.pop();
-        let { node,id } = cur;
-        let dom = document.getElementById(id);
-        let allSelect = true;
-        node.children.forEach(item=> {
-            !item.checked?allSelect = false:"";
-        })
+    updateDisabledCheck(disabledStack) {
+        while(disabledStack.length) {
+            let cur = disabledStack.pop();
+            let { node,id } = cur;
+            let dom = document.getElementById(id);
+            let allSelect = true;
 
-        dom?dom.checked = allSelect:"";
-        node.checked = allSelect;
+            if(!node.children.length) allSelect = false;
+
+            node.children.forEach(item=> {
+                !item.checked?allSelect = false:"";
+            })
+
+            dom?dom.checked = allSelect:"";
+            node.checked = allSelect;
+        }
     }
 
     updateCheck(dom) {
@@ -294,7 +340,6 @@ class Tree {
         cur = cur[keys[keys.length-1]];
         let disabledStack = []; //用于存储disabled的节点
         this.updateBottomCheck(dom.id,cur,!cur.checked,disabledStack);
-        
         //对disabled节点进行单独处理
         if(disabledStack.length) this.updateDisabledCheck(disabledStack,cur.checked);
 
@@ -404,11 +449,72 @@ class Tree {
         this.updateDom(editDom);
     }
 
+    //点击新增的事件
+    clickAppend(dom) {
+        let id = dom.parentNode.id;
+        let node = this.getNode(id);
+        let newId = node.id+"_new";
+        while(this.set.has(newId)) newId = newId + "_new";
+        this.set.add(newId);
+        node.children.push({
+            checked: node.checked,
+            children: [],
+            disabled: false,
+            hasFilter: true,
+            id: newId,
+            name: node.name+"_new",
+            spread: this.auto?true:false,
+        });
+
+        this.refreshTree();
+    }
+
+    //点击删除的事件
+    clickDelete(dom) {
+        let keys = dom.parentNode.id.split("_");
+        keys.pop();
+        
+        let parent = this.getNode(keys.join("_"));
+        let node = this.getNode(dom.parentNode.id);
+        //证明是父节点
+        if(parent === undefined) {
+            for(let i =0;i<this.tree.length;i++) {
+                if(this.tree[i] === node) {
+                    this.tree.splice(i,1);
+                    break;
+                }
+            }
+        } else {
+            for(let i =0;i<parent.children.length;i++) {
+                if(parent.children[i] === node) {
+                    parent.children.splice(i,1);
+                    break;
+                }
+            }
+            //查看删除后同层的是否全true
+            if(parent.children.length>=1) {
+                let allSelect = true;
+                for(let i =0;i<parent.children.length;i++) {
+                    if(parent.children[i].checked === false) {
+                        allSelect = false;
+                        break;
+                    }
+                }
+                //如果删除后全是对的并且父的选项为未选中则修改父选项
+                if(allSelect && parent.checked === false) {
+                    this.updateCheck(dom.parentNode.parentNode.parentNode.firstChild.firstChild);
+                }
+            }
+        }
+        this.refreshTree();
+        
+        
+    }
+
     //节点的扩展和收缩
     clickTree(e) {
         //节点的点击事件
         if(e.path[0].nodeName.toLowerCase() === "div") this.updateTree(e.path[0]);
-
         //checkbox的点击事件
         else if(e.path[0].type === "checkbox") {
             this.updateCheck(e.path[0])
@@ -423,7 +529,11 @@ class Tree {
                 id: cur.id,
                 name: cur.name
             });
-        };
+        }
+        //点击新增 
+        else if(e.path[0].className === "treeAppendText") this.clickAppend(e.path[0]);    
+        //点击删除
+        else if(e.path[0].className === "treeDeleteText") this.clickDelete(e.path[0]);   
     }
 
     //节点拖动事件
@@ -445,13 +555,13 @@ class Tree {
         let className = e.path[0].className;
         this.drag? "":this.drag = {};
         if(className.indexOf("treeChild")!==-1) {
-            !this.drag.overNode ? this.drag.overNode = e.path[0].firstChild.id:"";
-            if(this.drag.overNode !== e.path[0].firstChild.id){
+            !this.drag.overNode ? this.drag.overNode = dom.firstChild.id:"";
+            if(this.drag.overNode !== dom.firstChild.id){
                 let lastOverDom = document.getElementById(this.drag.overNode);
                 lastOverDom.style["borderBottom"] = "1px solid white";
                 lastOverDom.style["borderTop"] = "1px solid white";
                 lastOverDom.style["background"] = "white";
-                this.drag.overNode = e.path[0].firstChild.id;
+                this.drag.overNode = dom.firstChild.id;
             }
         } else if(className.indexOf("treeNode")!==-1 || className.indexOf("treeCheckbox")!=-1) {
             !this.drag.overNode ? this.drag.overNode = dom.id.replace("checkbox","tree"):"";
@@ -462,7 +572,17 @@ class Tree {
                 lastOverDom.style["background"] = "white";
                 this.drag.overNode = dom.id.replace("checkbox","tree");
             }
-        } else return;
+        } else if(className.indexOf("Text") !== -1) {
+            !this.drag.overNode ? this.drag.overNode = dom.parentNode.id:"";
+            if(this.drag.overNode !== dom.parentNode.id){
+                let lastOverDom = document.getElementById(this.drag.overNode);
+                lastOverDom.style["borderBottom"] = "1px solid white";
+                lastOverDom.style["borderTop"] = "1px solid white";
+                lastOverDom.style["background"] = "white";
+                this.drag.overNode = dom.parentNode.id;
+            }
+        }
+        else return;
 
         //对相应位置的节点进行操作
         if(this.drag.overNode.indexOf(this.drag.startNode)==-1) {
@@ -528,17 +648,8 @@ class Tree {
                 break;
         }
 
-        let dom = document.getElementById(this.id);
-        let children = dom.children;
-        let i=0;
-        while(i<children.length) {
-            if(children[i].className === "treeFilterContainer") i++;
-            else {
-                dom.removeChild(children[i]);
-            }
-        }
         this.clearCheck();
-        this.setDom(dom,this.tree,"tree",true);
+        this.refreshTree();
     }
 }
 

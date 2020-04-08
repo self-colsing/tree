@@ -55,7 +55,8 @@ window.onload = function() {
                         name: "tree_2_1_2"
                     },{
                         id: "0-2-1-2",
-                        name: "tree_2_1_3"
+                        name: "tree_2_1_3",
+                        disabled: true
                     }],
                     disabled: true
                 }]
@@ -69,6 +70,8 @@ window.onload = function() {
         hasCheck: true, //是否开启选项
         filter: true, //是否开启过滤节点
         draggable: true, //是否可拖拽
+        hasAppend: true, //是否可新增
+        hasDelete: true, //是否可删除
         id: "tree",
         checkFunc: (a,b)=>{
             console.log(a,b);
