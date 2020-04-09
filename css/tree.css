@@ -5,7 +5,7 @@
 }
 
 .treeParent {
-    /* display: inline-block; */
+    display: inline-block;
 }
 
 .treeParent .treeFilterContainer {
@@ -39,6 +39,15 @@
     border-bottom: 1px solid white;
     border-top: 1px solid white;
     transition: .3s;
+    cursor: pointer;
+}
+
+.treeParent .hoverNode{
+    background: rgba(0,0,0,0.1);
+}
+
+.treeParent .treeNode:hover{
+    background: rgba(0,0,0,0.1);
 }
 
 .treeParent .spreadNode::before,
@@ -78,6 +87,11 @@
     cursor: pointer;
     transition: .5s;
 }
+
+.treeParent .treeNode .treeDeleteText {
+    margin-right: 20px;
+}
+
 
 .treeParent .treeNode .treeAppendText:hover,
 .treeParent .treeNode .treeDeleteText:hover {

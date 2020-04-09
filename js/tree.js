@@ -203,8 +203,9 @@ class Tree {
                 //+和-的切换
                 if(cur.children.length) {
                     cur.spread = !cur.spread;
-                    if(cur.spread) dom.className = "treeNode shrinkNode";
-                    else dom.className = "treeNode spreadNode";
+                    dom.className = dom.className.replace(" shrinkNode","").replace(" spreadNode","");
+                    if(cur.spread) dom.className = dom.className + " shrinkNode";
+                    else dom.className = dom.className + " spreadNode";
                 };
                 
                 if(cur.children.length) this.spreadTree(dom);
@@ -536,7 +537,17 @@ class Tree {
     //节点的扩展和收缩
     clickTree(e) {
         //节点的点击事件
-        if(e.path[0].nodeName.toLowerCase() === "div") this.updateTree(e.path[0]);
+        if(e.path[0].nodeName.toLowerCase() === "div") {
+            if(e.path[0].className.indexOf("treeNode") !==-1) {
+                let dom = document.getElementsByClassName("hoverNode");
+                for(let i=0;i<dom.length;i++) {
+                    let item = dom[i];
+                    item.className = item.className.replace(" hoverNode","");
+                }
+                e.path[0].className = e.path[0].className + " hoverNode";
+            }
+            this.updateTree(e.path[0]);
+        }
         //checkbox的点击事件
         else if(e.path[0].type === "checkbox") {
             this.updateCheck(e.path[0])
