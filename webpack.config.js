@@ -27,7 +27,17 @@ module.exports={
 			},{
 				test:/\.js$/i,
 				use: 'babel-loader'
-			}
+			},{
+				test:/\.(jpg|png|gif)$/i,
+				use:[{
+					loader:'url-loader',
+					options:{
+						outputPath:'imgs/', //相对于上面的output.path
+						publicPath:'dest/imgs',	   //输出到css的路径
+						limit:8*1024		
+					}
+				}]
+			},
 		]
 	}
 }

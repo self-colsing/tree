@@ -1,5 +1,5 @@
-// import "../css/tree.css"
-// import {Tree} from "./tree.js"
+import "../css/tree.css"
+import {Tree} from "./tree.js"
 
 window.onload = function() {
     let tree = new Tree({
